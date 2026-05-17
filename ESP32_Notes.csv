@@ -1,0 +1,17 @@
+Note,Details
+NEW SoCs (2025–2026),"ESP32-C5, ESP32-C61, ESP32-H4, and ESP32-P4 are new additions since the 2024 ESP32 Guide"
+Announced (not yet available),ESP32-E22 (Wi-Fi 6E tri-band) and ESP32-H21 (ultra-low-power BLE) — announced at CES 2026
+ESP32-S2,Largely superseded by ESP32-S3. Not recommended for new designs
+ESP32 (Original),Only ESP32 with Bluetooth Classic. Hall sensor is deprecated in Boards Manager 3
+ESP32-P4,No built-in Wi-Fi or Bluetooth — pairs with ESP32-C6 or similar as wireless companion
+ESP32-C5,First ESP32 with dual-band (2.4/5 GHz) Wi-Fi 6. Mass production started April 2025
+ESP32-C61,Cost-reduced version of ESP32-C6. Wi-Fi 6 + BLE but NO Zigbee/Thread. Mass production June 2025
+ESP32-H4,Dual-core RISC-V with BLE 5.4 + 802.15.4. Targets wireless audio and Matter devices
+Matter Support,Matter can run on chips with Thread or Wi-Fi. Marked ✓ for chips with native 802.15.4 (Thread) support
+8-bit DAC,Only available on ESP32 (original) and ESP32-S2. Removed from all newer models
+Touch Switches,"Capacitive touch on ESP32, S2, S3 (GPIO-based) and P4 (LP section). Not on C or H series"
+USB OTG,Full Speed (12 Mbps) on S2/S3. High Speed (480 Mbps) on P4. Other chips have USB Serial/JTAG only
+MCPWM,"Motor Control PWM available on ESP32, S3, C5, C6, and P4. Not on S2, C2, C3, C61, H2, H4"
+GPIO Counts,Maximum programmable GPIOs. Actual available pins depend on the module/devkit used
+Prices,Approximate as of early 2026. Vary by vendor and region
+Sources,Espressif datasheets and product selector (products.espressif.com). Verified against ESP-IDF documentation

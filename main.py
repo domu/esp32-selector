@@ -7,16 +7,30 @@ import pandas as pd
 #    df = pd.read_csv('ESP32-Feature-Matrix-2026.xlsx - ESP32 Feature Matrix.csv')
 #    return df
 
-#Versione per Strealit
+#Versione per Strealit V1
+#
+#def load_data():
+#    # Il nome del file deve essere identico a quello che hai caricato su GitHub
+#    nome_file = "ESP32-Feature-Matrix-2026.xlsx - ESP32 Feature Matrix.csv"
+#    try:
+#        df = pd.read_csv(nome_file)
+#        return df
+#    except FileNotFoundError:
+#        st.error(f"Attenzione: Il file '{nome_file}' non è stato trovato nel repository!")
+#        return None
+
+
+#Versione Streamlit V2 con csv
 
 def load_data():
-    # Il nome del file deve essere identico a quello che hai caricato su GitHub
-    nome_file = "ESP32-Feature-Matrix-2026.xlsx - ESP32 Feature Matrix.csv"
+    # Usiamo il nuovo nome file più semplice
+    nome_file = "ESP32_Feature_Matrix_2026.csv"
     try:
+        # Carichiamo il file CSV
         df = pd.read_csv(nome_file)
         return df
     except FileNotFoundError:
-        st.error(f"Attenzione: Il file '{nome_file}' non è stato trovato nel repository!")
+        st.error(f"Attenzione: Il file '{nome_file}' non è stato trovato nel repository! Assicurati di averlo caricato su GitHub.")
         return None
 
 df = load_data()

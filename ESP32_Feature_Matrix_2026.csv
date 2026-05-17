@@ -1,0 +1,62 @@
+Feature Category,Feature,"ESP32
+(Original)",ESP32-S2,ESP32-S3,ESP32-C2,ESP32-C3,"ESP32-C5
+(NEW)",ESP32-C6,"ESP32-C61
+(NEW)",ESP32-H2,"ESP32-H4
+(NEW)","ESP32-P4
+(NEW)"
+ARCHITECTURE,CPU Architecture,Xtensa LX6,Xtensa LX7,Xtensa LX7,RISC-V,RISC-V,RISC-V,RISC-V,RISC-V,RISC-V,RISC-V,RISC-V
+,CPU Cores,Dual,Single,Dual,Single,Single,Single,Single,Single,Single,Dual,Dual
+,Max CPU Frequency,240 MHz,240 MHz,240 MHz,120 MHz,160 MHz,240 MHz,160 MHz,160 MHz,96 MHz,96 MHz,400 MHz
+,SRAM,520 KB,320 KB,512 KB,272 KB,400 KB,400 KB,512 KB,256 KB,320 KB,320 KB,768 KB
+,LP Core / ULP Co-processor,ULP (FSM),"ULP (FSM+
+RISC-V)","ULP (FSM+
+RISC-V)",✗,✗,LP Core,LP Core,✗,✗,LP Core,LP Core
+,AI / Vector Instructions,✗,✗,✓,✗,✗,✗,✗,✗,✗,✗,✓
+WIRELESS,Wi-Fi,Wi-Fi 4,Wi-Fi 4,Wi-Fi 4,Wi-Fi 4,Wi-Fi 4,"Wi-Fi 6
+Dual-Band",Wi-Fi 6,Wi-Fi 6,✗,✗,✗
+,Wi-Fi Band,2.4 GHz,2.4 GHz,2.4 GHz,2.4 GHz,2.4 GHz,2.4 + 5 GHz,2.4 GHz,2.4 GHz,—,—,—
+,Bluetooth Classic,✓,✗,✗,✗,✗,✗,✗,✗,✗,✗,✗
+,Bluetooth Low Energy (BLE),BLE 4.2,✗,BLE 5.0,BLE 5.0,BLE 5.0,BLE 5.0,BLE 5.3,BLE 5.0,BLE 5.0,BLE 5.4,✗
+,802.15.4 (Zigbee / Thread),✗,✗,✗,✗,✗,✓,✓,✗,✓,✓,✗
+,Matter Support,✗,✗,✗,✗,✗,✓,✓,✗,✓,✓,✗
+COMMON PERIPHERALS,GPIO (Max Programmable),34,43,45,14,22,27,30,22,19,22,55
+,UART,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓
+,SPI,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓
+,I2C,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓
+,I2S,✓,✓,✓,✗,✓,✓,✓,✓,✓,✓,✓
+,PWM (LED Control),✓,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓
+,MCPWM (Motor Control),✓,✗,✓,✗,✗,✓,✓,✗,✗,✗,✓
+,RMT (Remote Control),✓,✓,✓,✗,✓,✓,✓,✓,✓,✓,✓
+,TWAI / CAN Bus,✓,✓,✓,✗,✓,✓,✓,✓,✓,✓,✓
+ANALOG,12-bit ADC,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓
+,8-bit DAC,✓,✓,✗,✗,✗,✗,✗,✗,✗,✗,✓
+,Touch Switches,✓,✓,✓,✗,✗,✗,✗,✗,✗,✗,✓
+,Hall Sensor,Deprecated,✗,✗,✗,✗,✗,✗,✗,✗,✗,✗
+,Temperature Sensor,✗,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓
+USB & HIGH-SPEED,USB OTG,✗,Full Speed,Full Speed,✗,✗,✗,✗,✗,✗,✗,"High Speed
+(USB 2.0)"
+,USB Serial / JTAG,✗,✗,✓,✗,✓,✓,✓,✓,✓,✓,✓
+,JTAG Debug,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓
+,SD / SDIO Interface,✓,✗,✓,✗,✗,✓,✓,✗,✗,✗,✓
+,Ethernet (MAC),✓,✗,✗,✗,✗,✗,✗,✗,✗,✗,✓
+DISPLAY & CAMERA,Parallel Camera Interface,✗,✓,✓,✗,✗,✗,✗,✗,✗,✗,✓
+,MIPI-CSI (Camera),✗,✗,✗,✗,✗,✗,✗,✗,✗,✗,✓
+,MIPI-DSI (Display),✗,✗,✗,✗,✗,✗,✗,✗,✗,✗,✓
+,Parallel Display Interface,✗,✓,✓,✗,✗,✗,✗,✗,✗,✗,✓
+,H.264 Hardware Encoder,✗,✗,✗,✗,✗,✗,✗,✗,✗,✗,✓
+SECURITY,Secure Boot,v1,v2,v2,v2,v2,v2,v2,v2,v2,v2,v2
+,Flash Encryption,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓,✓
+,Digital Signature Peripheral,✗,✓,✓,✗,✓,✓,✓,✓,✓,✓,✓
+STATUS,Production Status,Mature,"Mature
+(Superseded)","Active
+⭐ Popular","Active
+(Niche)",Active,"NEW
+(Mass Prod
+2025)",Active,"NEW
+(Mass Prod
+2025)",Active,"NEW
+(2025)","NEW
+(2025)"
+,Recommended for New Designs,"Only if BT
+Classic needed",No — use S3,✓,"Budget
+only",✓,✓,✓,✓,✓,✓,✓
