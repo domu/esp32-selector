@@ -4,8 +4,7 @@ import pandas as pd
 # Configurazione Pagina
 st.set_page_config(page_title="ESP32 Expert Selector 2026", layout="wide")
 
-# --- LOGICA RESET AVANZATA ---
-# Funzione per pulire tutti i widget salvati nello stato della sessione
+# --- LOGICA RESET ---
 def reset_all_filters():
     for key in st.session_state.keys():
         del st.session_state[key]
@@ -29,45 +28,43 @@ if df is not None:
     model_names = df.columns[2:]
     main_sections = ["ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", "SECURITY", "STATUS"]
 
-    # --- HEADER FISSO (STRETTAMENTE CONTROLLATO) ---
-    # Creiamo un contenitore che resterà bloccato in alto
+    # --- HEADER FISSO (MODELLI + RESET) ---
     header_container = st.container()
-
-    # Inizializziamo il dizionario dei filtri
+    
+    # Inizializziamo i filtri (servono prima per calcolare i colori nell'header)
     active_filters = {}
 
-    # --- SEZIONE FILTRI (SOTTO L'HEADER) ---
+    # --- SEZIONE FILTRI (SCORREVOLE) ---
     tab1, tab2 = st.tabs(["🎯 Filtro Tecnico Avanzato", "📚 Consigli d'Uso"])
 
     with tab1:
-        # Pulsante Reset con nuova logica
-        col_t, col_r = st.columns([4, 1])
-        with col_r:
-            st.button("🔄 Reset Selezione", use_container_width=True, type="primary", on_click=reset_all_filters)
-
-        # Generazione dei filtri
+        # Spazio vuoto per non far finire i primi filtri sotto l'header fisso
+        st.markdown("<div style='margin-top: 150px;'></div>", unsafe_allow_html=True)
+        
         for section in main_sections:
             cat_rows = df[df['Feature Category'] == section]
             if not cat_rows.empty:
                 with st.expander(f"📂 {section}", expanded=True):
                     for _, row in cat_rows.iterrows():
                         feat_label = row['Feature']
-                        
-                        # Pulizia valori unici (escludendo ✗)
                         possible_values = sorted(list(set([str(row[m]).strip() for m in model_names if str(row[m]).strip() not in ['✗', 'nan', '', 'None']])))
                         
                         if possible_values:
-                            # Usiamo il parametro 'key' collegato alla sessione per il reset
                             res = st.pills(feat_label, possible_values, key=f"pill_{feat_label}")
                             if res:
                                 active_filters[feat_label] = res
 
-    # --- AGGIORNAMENTO HEADER FISSO ---
+    # --- RIEMPIMENTO HEADER FISSO (ESECUZIONE POST-FILTRI) ---
     with header_container:
-        st.title("🛠️ ESP32 Smart Configurator")
-        st.write("I modelli si illuminano in tempo reale in base ai filtri selezionati sotto.")
+        # Usiamo colonne per mettere Titolo a sinistra e Reset a destra
+        col_head_1, col_head_2 = st.columns([4, 1])
+        with col_head_1:
+            st.title("🛠️ ESP32 Smart Configurator")
+        with col_head_2:
+            st.write("") # Spaziatore
+            st.button("🔄 Reset Selezione", use_container_width=True, type="primary", on_click=reset_all_filters)
         
-        # Grid per i modelli nell'header
+        # Visualizzazione modelli nell'header
         cols_res = st.columns(len(model_names))
         for idx, model in enumerate(model_names):
             is_compatible = True
@@ -78,17 +75,16 @@ if df is not None:
                     break
             
             with cols_res[idx]:
-                style = "text-align: center; padding: 10px; border-radius: 8px; min-height: 55px; display: flex; align-items: center; justify-content: center; border: 1px solid "
+                style = "text-align: center; padding: 8px; border-radius: 8px; min-height: 50px; display: flex; align-items: center; justify-content: center; border: 1px solid "
                 if not active_filters:
-                    st.markdown(f"<div style='{style} #333; color: #666; font-size: 0.75rem;'>{model}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='{style} #444; color: #888; font-size: 0.7rem;'>{model}</div>", unsafe_allow_html=True)
                 elif is_compatible:
-                    st.markdown(f"<div style='{style} #00d4ff; background-color: #007bff; color: white; font-weight: bold; box-shadow: 0px 0px 12px rgba(0,123,255,0.7); font-size: 0.75rem;'>{model}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='{style} #00d4ff; background-color: #007bff; color: white; font-weight: bold; box-shadow: 0px 0px 10px rgba(0,123,255,0.8); font-size: 0.7rem;'>{model}</div>", unsafe_allow_html=True)
                 else:
-                    st.markdown(f"<div style='{style} #111; color: #222; opacity: 0.1; font-size: 0.75rem;'>{model}</div>", unsafe_allow_html=True)
-        st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='{style} #222; color: #333; opacity: 0.2; font-size: 0.7rem;'>{model}</div>", unsafe_allow_html=True)
 
     with tab2:
-        # Sezione Consigli
+        st.header("Le migliori schede per tipo di progetto")
         rec_cat = {"Sperimentazione": ["ESP32-S3", "ESP32-C6", "ESP32-C5"], "Multimedia": ["ESP32-P4", "ESP32-S3", "Waveshare S3"], "Smart Home": ["ESP32-C6", "ESP32-H2", "ESP32-C5"], "Budget": ["ESP32-C3", "ESP32", "XIAO C3"]}
         sel = st.radio("Seleziona area:", list(rec_cat.keys()), horizontal=True)
         c1, c2, c3 = st.columns(3)
@@ -98,28 +94,31 @@ if df is not None:
         with c3: st.info(f"🥉 {picks[2]}")
         st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
 
-# --- CSS FIX: Z-INDEX E STICKY ---
+# --- CSS DEFINITIVO PER BLOCCO FISSO E Z-INDEX ---
 st.markdown("""
     <style>
-    /* Forza l'header a stare sopra tutto con sfondo pieno */
+    /* Header Fisso con Sfondo Opaco e Sfocatura */
     [data-testid="stVerticalBlock"] > div:first-child {
         position: sticky;
         top: 0;
-        background-color: #0e1117; /* Colore di sfondo scuro di Streamlit */
-        z-index: 1000;
-        padding-top: 10px;
-        border-bottom: 2px solid #333;
+        background-color: rgba(14, 17, 23, 0.95);
+        backdrop-filter: blur(10px);
+        z-index: 9999;
+        padding: 15px;
+        border-bottom: 2px solid #007bff;
     }
     
-    /* Gestione spazio expander */
-    .stExpander { border: none !important; border-bottom: 1px solid #222 !important; }
-    
-    /* Testo delle etichette filtri */
-    [data-testid="stMarkdownContainer"] p { font-size: 0.8rem; font-weight: bold; color: #ddd; }
-    
-    /* Fix per sovrapposizione pills durante lo scroll */
-    [data-testid="stExpander"] {
+    /* Impedisce ai contenuti sotto di coprire l'header */
+    .stExpander {
+        position: relative;
         z-index: 1;
+    }
+
+    /* Stile per le etichette delle Pills */
+    [data-testid="stMarkdownContainer"] p {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #efefef;
     }
     </style>
     """, unsafe_allow_html=True)
