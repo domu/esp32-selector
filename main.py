@@ -4,28 +4,26 @@ import pandas as pd
 # Configurazione Pagina
 st.set_page_config(page_title="ESP32 Expert Selector 2026", layout="wide")
 
-# --- LOGICA RESET AVANZATA ---
-if 'reset_key' not in st.session_state:
-    st.session_state.reset_key = 0
+# --- GESTIONE STATO E RESET ---
+if 'form_id' not in st.session_state:
+    st.session_state.form_id = 0
 
-def reset_all_filters():
-    st.session_state.reset_key += 1
+def trigger_reset():
+    st.session_state.form_id += 1
     for key in list(st.session_state.keys()):
         if key.startswith("pill_"):
             del st.session_state[key]
     st.rerun()
 
-# --- LOGICA SELEZIONE BOARD (Inversa) ---
 def select_board_features(model_name, df):
-    st.session_state.reset_key += 1 
+    st.session_state.form_id += 1
     for _, row in df.iterrows():
         feat_label = row['Feature']
-        val_to_set = str(row[model_name]).strip()
-        if val_to_set not in ['✗', 'nan', '', 'None']:
-            st.session_state[f"pill_{feat_label}"] = val_to_set
+        val = str(row[model_name]).strip()
+        if val not in ['✗', 'nan', '', 'None']:
+            st.session_state[f"pill_{feat_label}"] = val
 
 def load_data():
-    # Nome del file presente nel repository
     nome_file = "ESP32_Feature_Matrix_2026.csv"
     try:
         df = pd.read_csv(nome_file)
@@ -33,129 +31,94 @@ def load_data():
         df['Feature Category'] = df['Feature Category'].ffill().str.strip()
         df['Feature'] = df['Feature'].str.strip()
         return df
-    except Exception as e:
-        st.error(f"Errore: il file '{nome_file}' non è stato trovato. Assicurati che il nome sia corretto su GitHub.")
+    except:
+        st.error("Assicurati che il file 'ESP32_Feature_Matrix_2026.csv' sia nel repository.")
         return None
 
 df = load_data()
 
 if df is not None:
     model_names = df.columns[2:]
-    main_sections = ["ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", "SECURITY", "STATUS"]
+    sections = ["ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", "SECURITY", "STATUS"]
 
-    # --- CSS PER LAYOUT A COLONNE FISSE ---
-    st.markdown(f"""
+    # --- CSS PER LAYOUT COMPATTO ---
+    st.markdown("""
         <style>
-        /* Colonna sinistra scorrevole */
-        [data-testid="stColumn"]:nth-child(1) {{
-            width: 65% !important;
-            max-width: 65% !important;
-            padding-right: 30px;
-        }}
-        /* Colonna destra fissa */
-        [data-testid="stColumn"]:nth-child(2) {{
-            position: fixed;
-            right: 2%;
-            top: 60px;
-            width: 28% !important;
-            max-height: 85vh;
-            overflow-y: auto;
-            background-color: #0e1117;
-            padding: 15px;
-            border-left: 1px solid #333;
-            z-index: 1000;
-        }}
-        .board-card {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #444;
-            background-color: #161b22;
-            margin-bottom: 2px;
-        }}
-        .compatible-tag {{
-            background-color: #007bff;
-            color: white;
-            font-size: 0.6rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-        }}
+        [data-testid="stColumn"]:nth-child(1) { width: 68% !important; }
+        [data-testid="stColumn"]:nth-child(2) { 
+            position: fixed; right: 1%; top: 40px; width: 28% !important;
+            background: #0e1117; z-index: 1000; padding: 10px;
+            border-left: 1px solid #333; height: 95vh; overflow-y: auto;
+        }
+        .board-box {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 4px 10px; border: 1px solid #444; border-radius: 4px;
+            background: #161b22; margin-bottom: 2px;
+        }
+        .comp-tag {
+            background: #007bff; color: white; font-size: 0.6rem;
+            padding: 1px 5px; border-radius: 3px; font-weight: bold;
+        }
+        .stButton button { padding: 2px 10px; font-size: 0.8rem; }
         </style>
     """, unsafe_allow_html=True)
 
-    col_filters, col_results = st.columns([0.65, 0.35])
+    col_left, col_right = st.columns([0.7, 0.3])
 
     active_filters = {}
 
-    with col_filters:
-        st.title("🛠️ ESP32 Smart Selector")
-        
-        with st.container(key=f"filters_main_{st.session_state.reset_key}"):
-            tab1, tab2 = st.tabs(["🎯 Filtri Dinamici", "📚 Consigli & Risorse"])
+    with col_left:
+        st.title("🛠️ ESP32 Selector")
+        # Il contenitore cambia ID al reset, forzando la pulizia visiva
+        with st.container(key=f"main_form_{st.session_state.form_id}"):
+            t1, t2 = st.tabs(["🎯 Selezione", "📚 Consigli"])
             
-            with tab1:
-                for section in main_sections:
-                    cat_rows = df[df['Feature Category'] == section]
-                    if not cat_rows.empty:
-                        with st.expander(f"📂 {section}", expanded=True):
-                            for _, row in cat_rows.iterrows():
-                                feat_label = row['Feature']
-                                possible_values = sorted(list(set([str(row[m]).strip() for m in model_names if str(row[m]).strip() not in ['✗', 'nan', '', 'None']])))
-                                if possible_values:
-                                    res = st.pills(feat_label, possible_values, key=f"pill_{feat_label}")
-                                    if res:
-                                        active_filters[feat_label] = res
+            with t1:
+                for sec in sections:
+                    rows = df[df['Feature Category'] == sec]
+                    if not rows.empty:
+                        with st.expander(f"📂 {sec}", expanded=True):
+                            for _, r in rows.iterrows():
+                                f_label = r['Feature']
+                                opts = sorted(list(set([str(r[m]).strip() for m in model_names if str(r[m]).strip() not in ['✗', 'nan', '']])))
+                                if opts:
+                                    sel = st.pills(f_label, opts, key=f"pill_{f_label}")
+                                    if sel: active_filters[f_label] = sel
             
-            with tab2:
-                st.subheader("💡 Consigli per Categoria d'Uso")
-                rec_categories = {
-                    "Sperimentazione / General Purpose": ["ESP32-S3", "ESP32-C6", "ESP32-C5"],
-                    "Multimedia / Display / AI": ["ESP32-P4", "ESP32-S3", "LilyGo T-Display"],
-                    "Smart Home (Matter/Zigbee)": ["ESP32-C6", "ESP32-H2", "ESP32-C5"],
-                    "Budget / Educational": ["ESP32-C3", "ESP32 Original", "XIAO C3"]
+            with t2:
+                recs = {
+                    "General / DIY": ["ESP32-S3", "ESP32-C6", "ESP32-C5"],
+                    "AI / Display": ["ESP32-P4", "ESP32-S3", "LilyGo S3"],
+                    "IoT / Matter": ["ESP32-C6", "ESP32-H2", "ESP32-C5"],
+                    "Low Cost": ["ESP32-C3", "ESP32 Original", "ESP32-C2"]
                 }
-
-                sel_cat = st.radio("Seleziona la tua area di interesse:", list(rec_categories.keys()), horizontal=True)
-                
+                cat = st.radio("Ambito:", list(recs.keys()), horizontal=True)
                 c1, c2, c3 = st.columns(3)
-                picks = rec_categories[sel_cat]
-                
-                with c1: st.info(f"🥇 **Top Choice**\n\n{picks[0]}")
-                with c2: st.info(f"🥈 **Alternative**\n\n{picks[1]}")
-                with c3: st.info(f"🥉 **Entry Level**\n\n{picks[2]}")
-
-                st.divider()
-                st.subheader("🎥 Video Approfondimento")
+                with c1: st.info(f"🥇 **Oro**\n\n{recs[cat][0]}")
+                with c2: st.info(f"🥈 **Argento**\n\n{recs[cat][1]}")
+                with c3: st.info(f"🥉 **Bronzo**\n\n{recs[cat][2]}")
                 st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
 
-    # --- COLONNA DESTRA RISULTATI (FISSA) ---
-    with col_results:
-        st.button("🔄 Reset Totale", use_container_width=True, type="primary", on_click=reset_all_filters)
-        st.subheader("Modelli ESP32")
-        st.caption("Clicca su un modello per caricarne i filtri")
+    with col_right:
+        st.button("🔄 Reset Filtri", use_container_width=True, type="primary", on_click=trigger_reset)
+        st.write("### Board Status")
         
-        for model in model_names:
-            is_compatible = True
-            for f_name, f_val in active_filters.items():
-                model_val = str(df[df['Feature'] == f_name][model].values[0]).strip()
-                if model_val != f_val:
-                    is_compatible = False
-                    break
+        for m in model_names:
+            match = True
+            for f, v in active_filters.items():
+                if str(df[df['Feature'] == f][m].values[0]).strip() != v:
+                    match = False; break
             
-            is_active = is_compatible and active_filters
-            opacity = "1.0" if (is_active or not active_filters) else "0.15"
-            border_color = "#00d4ff" if is_active else "#333"
+            active = match and active_filters
+            opac = "1.0" if (active or not active_filters) else "0.2"
             
             st.markdown(f"""
-                <div class="board-card" style="opacity: {opacity}; border-color: {border_color};">
-                    <span style="font-size: 0.85rem; font-weight: bold; color: white;">{model}</span>
-                    {"<span class='compatible-tag'>✓ COMPATIBILE</span>" if is_active else ""}
+                <div class="board-box" style="opacity: {opac}; border-color: {'#00d4ff' if active else '#333'};">
+                    <span style="font-size: 0.8rem; font-weight: bold;">{m}</span>
+                    {"<span class='comp-tag'>✓ OK</span>" if active else ""}
                 </div>
             """, unsafe_allow_html=True)
             
-            if st.button(f"Carica caratteristiche: {model}", key=f"btn_{model}", use_container_width=True):
-                select_board_features(model, df)
+            if st.button(f"Carica {m}", key=f"btn_{m}", use_container_width=True):
+                select_board_features(m, df)
                 st.rerun()
