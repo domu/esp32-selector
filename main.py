@@ -1,101 +1,116 @@
 import streamlit as st
 import pandas as pd
 
-# Configurazione pagina per un look più "Dark Mode" professionale
-st.set_page_config(page_title="ESP32 Advisor 2026", layout="wide")
+# Configurazione Pagina
+st.set_page_config(page_title="ESP32 Expert Selector 2026", layout="wide")
 
 def load_data():
     nome_file = "ESP32_Feature_Matrix_2026.csv"
     try:
-        # Pulizia nomi colonne per gestire eventuali ritorni a capo nel CSV
         df = pd.read_csv(nome_file)
+        # Pulizia nomi colonne e gestione valori nulli
         df.columns = [c.replace('\n', ' ') for c in df.columns]
+        df = df.fillna('✗')
         return df
     except:
-        st.error("File CSV non trovato. Carica 'ESP32_Feature_Matrix_2026.csv' su GitHub.")
+        st.error("File CSV non trovato nel repository!")
         return None
 
 df = load_data()
 
 if df is not None:
-    # Estraiamo l'elenco delle caratteristiche (righe) e dei modelli (colonne)
-    features_list = df['Feature'].unique().tolist()
-    model_names = df.columns[2:] # Esclude le prime due colonne descrittive
+    # Preparazione dati
+    model_names = df.columns[2:]
+    categories = df['Feature Category'].dropna().unique()
 
-    st.title("🛠️ ESP32 Smart Selector")
-    
-    tab1, tab2 = st.tabs(["🎯 Configurazione Dinamica", "📚 Consigli d'Uso"])
+    st.title("🛠️ ESP32 Smart Configurator")
+
+    tab1, tab2 = st.tabs(["🎯 Filtro per Aree", "📚 Consigli d'Uso"])
 
     with tab1:
-        st.subheader("Seleziona le caratteristiche desiderate:")
-        
-        # Creazione dei pulsanti grafici (Toggle)
-        # Usiamo le "columns" di Streamlit per distribuire i pulsanti
-        cols_buttons = st.columns(4)
+        # Riga superiore con Titolo e Reset
+        col_title, col_reset = st.columns([4, 1])
+        with col_reset:
+            if st.button("🔄 Reset Selezione", use_container_width=True, type="primary"):
+                st.rerun()
+
+        # Generazione dinamica dei pulsanti divisi per Area
         selected_features = []
         
-        for i, feature in enumerate(features_list):
-            with cols_buttons[i % 4]:
-                if st.checkbox(feature, key=f"feat_{i}"):
-                    selected_features.append(feature)
+        for cat in categories:
+            with st.expander(f"🔹 {cat}", expanded=True):
+                # Filtriamo le feature appartenenti a questa categoria
+                cat_features = df[df['Feature Category'] == cat]['Feature'].tolist()
+                
+                # Distribuiamo le feature su più colonne all'interno dell'expander
+                cols = st.columns(4)
+                for i, feat in enumerate(cat_features):
+                    with cols[i % 4]:
+                        if st.checkbox(feat, key=f"check_{feat}"):
+                            selected_features.append(feat)
 
         st.divider()
 
-        # Visualizzazione Modelli con logica di colore
-        st.subheader("Risultato Selezione:")
-        cols_models = st.columns(len(model_names))
+        # Area Visualizzazione Risultati
+        st.subheader("Modelli Corrispondenti")
+        cols_res = st.columns(len(model_names))
 
         for idx, model in enumerate(model_names):
-            # Verifichiamo se il modello soddisfa TUTTE le caratteristiche selezionate
             is_compatible = True
             for f in selected_features:
-                # Recuperiamo il valore (✓, ✗, o testo) per quella specifica cella
                 val = df[df['Feature'] == f][model].values[0]
-                if str(val) == '✗' or str(val).lower() == 'nan':
+                # Se la cella contiene '✗', il modello non è compatibile
+                if str(val) == '✗':
                     is_compatible = False
                     break
             
-            with cols_models[idx]:
+            with cols_res[idx]:
                 if not selected_features:
-                    # Se nulla è selezionato, mostriamo tutto in grigio neutro
-                    st.markdown(f"<div style='color: #555; text-align: center; border: 1px solid #333; padding: 10px; border-radius: 5px;'>{model}</div>", unsafe_allow_html=True)
+                    # Stato iniziale: tutto in grigio
+                    st.markdown(f"<div style='color: #666; text-align: center; border: 1px solid #333; padding: 10px; border-radius: 8px; font-size: 0.8em;'>{model}</div>", unsafe_allow_html=True)
                 elif is_compatible:
-                    # Se compatibile, "illumina" il modello
-                    st.markdown(f"<div style='color: white; background-color: #007bff; text-align: center; border: 1px solid #007bff; padding: 10px; border-radius: 5px; font-weight: bold; box-shadow: 0px 0px 10px #007bff;'>{model}</div>", unsafe_allow_html=True)
+                    # Modello "Illuminato"
+                    st.markdown(f"<div style='color: white; background-color: #007bff; text-align: center; border: 2px solid #00d4ff; padding: 10px; border-radius: 8px; font-weight: bold; box-shadow: 0px 0px 15px rgba(0,123,255,0.6);'>{model}</div>", unsafe_allow_html=True)
                 else:
-                    # Se non compatibile, grigio chiaro/trasparente
-                    st.markdown(f"<div style='color: #222; text-align: center; border: 1px solid #111; padding: 10px; border-radius: 5px; opacity: 0.3;'>{model}</div>", unsafe_allow_html=True)
+                    # Modello non compatibile: quasi invisibile
+                    st.markdown(f"<div style='color: #222; text-align: center; border: 1px solid #111; padding: 10px; border-radius: 8px; opacity: 0.2;'>{model}</div>", unsafe_allow_html=True)
 
     with tab2:
-        # Manteniamo la tua sezione perfetta, adeguando leggermente i colori
         st.header("Le migliori schede per tipo di progetto")
-        st.caption("Consigli basati sulla guida DroneBot Workshop 2026")
+        st.caption("Analisi basata sulle tendenze hardware del 2026")
 
-        categories = {
-            "Sperimentazione / Uso Generale": ["ESP32-S3", "ESP32-C6", "ESP32-C5"],
-            "Multimedia / Display / AI": ["ESP32-P4", "ESP32-S3", "Waveshare S3 LCD"],
+        # Layout a card per i consigli
+        rec_categories = {
+            "Sperimentazione / General Purpose": ["ESP32-S3", "ESP32-C6", "ESP32-C5"],
+            "Multimedia / Display / AI": ["ESP32-P4", "ESP32-S3", "LilyGo T-Display"],
             "Smart Home (Matter/Zigbee)": ["ESP32-C6", "ESP32-H2", "ESP32-C5"],
-            "Budget / Educational": ["ESP32-C3", "ESP32 Original", "XIAO Series"]
+            "Budget / Educational": ["ESP32-C3", "ESP32 Original", "XIAO C3"]
         }
 
-        sel_cat = st.radio("Scegli il tuo obiettivo:", list(categories.keys()), horizontal=True)
+        sel_cat = st.radio("Seleziona la tua area di interesse:", list(rec_categories.keys()), horizontal=True)
         
         c1, c2, c3 = st.columns(3)
-        picks = categories[sel_cat]
+        picks = rec_categories[sel_cat]
         
-        with c1: st.info(f"🥇 **Top 1**\n\n{picks[0]}")
-        with c2: st.info(f"🥈 **Top 2**\n\n{picks[1]}")
-        with c3: st.info(f"🥉 **Top 3**\n\n{picks[2]}")
+        with c1: st.info(f"🥇 **Top Choice**\n\n{picks[0]}")
+        with c2: st.info(f"🥈 **Alternative**\n\n{picks[1]}")
+        with c3: st.info(f"🥉 **Entry Level**\n\n{picks[2]}")
 
-# CSS Custom per migliorare l'estetica generale
+        st.divider()
+        # Ripristino del link video
+        st.markdown("### 🎥 Approfondimento Video")
+        st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
+        st.write("Guarda la guida completa di **DroneBot Workshop** per i dettagli su ogni variante.")
+
+# CSS per pulire l'estetica degli expander e checkbox
 st.markdown("""
     <style>
+    .streamlit-expanderHeader {
+        background-color: #121212;
+        border-radius: 5px;
+    }
     .stCheckbox {
-        background-color: #1e1e1e;
-        padding: 5px 10px;
-        border-radius: 15px;
-        border: 1px solid #333;
-        margin-bottom: 5px;
+        padding: 2px;
     }
     </style>
     """, unsafe_allow_html=True)
