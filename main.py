@@ -9,8 +9,9 @@ def load_data():
     try:
         df = pd.read_csv(nome_file)
         # Pulizia nomi colonne e gestione valori nulli
-        df.columns = [c.replace('\n', ' ') for c in df.columns]
-        df = df.fillna('✗')
+        df.columns = [c.replace('\n', ' ').strip() for c in df.columns]
+        # Riordiniamo le categorie per sicurezza (rimuovendo eventuali spazi)
+        df['Feature Category'] = df['Feature Category'].str.strip()
         return df
     except:
         st.error("File CSV non trovato nel repository!")
@@ -20,8 +21,13 @@ df = load_data()
 
 if df is not None:
     model_names = df.columns[2:]
-    # Otteniamo le categorie uniche (es. ARCHITECTURE, WIRELESS, etc.)
-    feature_categories = df['Feature Category'].unique()
+    
+    # Definiamo le categorie principali nell'ordine esatto richiesto
+    main_sections = [
+        "ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", 
+        "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", 
+        "SECURITY", "STATUS"
+    ]
 
     st.title("🛠️ ESP32 Smart Configurator")
 
@@ -33,55 +39,62 @@ if df is not None:
             if st.button("🔄 Reset Selezione", use_container_width=True, type="primary"):
                 st.rerun()
 
-        # Dizionario per salvare i filtri attivi: { "FeatureName": "SelectedValue" }
         active_filters = {}
 
-        # 1. GENERAZIONE DINAMICA DEI FILTRI
-        for cat in feature_categories:
-            if pd.isna(cat): continue
+        # 1. GENERAZIONE DINAMICA DEI FILTRI PER SEZIONE
+        for section in main_sections:
+            # Filtriamo solo le righe che appartengono a questa categoria specifica
+            cat_rows = df[df['Feature Category'] == section]
             
-            with st.expander(f"🔹 {cat}", expanded=True):
-                # Righe appartenenti a questa categoria
-                cat_rows = df[df['Feature Category'] == cat]
-                
-                for _, row in cat_rows.iterrows():
-                    feature_name = row['Feature']
-                    # Estraiamo i valori unici dalle colonne dei modelli per questa riga
-                    # Es: per "CPU Cores" otterremo ["Dual", "Single"]
-                    possible_values = sorted(list(set([str(row[m]) for m in model_names if str(row[m]) != '✗'])))
-                    
-                    if possible_values:
-                        # Creiamo una riga di selezione per ogni Feature
-                        selected = st.pills(feature_name, possible_values, key=f"pill_{feature_name}")
-                        if selected:
-                            active_filters[feature_name] = selected
+            if not cat_rows.empty:
+                with st.expander(f"📂 {section}", expanded=True):
+                    for _, row in cat_rows.iterrows():
+                        feature_name = row['Feature']
+                        
+                        # Estraiamo i valori unici dai modelli escludendo rigorosamente "✗" e valori nulli
+                        possible_values = []
+                        for model in model_names:
+                            val = str(row[model]).strip()
+                            if val != '✗' and val != 'nan' and val != '':
+                                if val not in possible_values:
+                                    possible_values.append(val)
+                        
+                        # Mostriamo il selettore solo se ci sono valori validi (non solo ✗)
+                        if possible_values:
+                            # Ordiniamo i valori per una visualizzazione pulita
+                            possible_values.sort()
+                            selected = st.pills(feature_name, possible_values, key=f"pill_{feature_name}")
+                            if selected:
+                                active_filters[feature_name] = selected
 
         st.divider()
 
-        # 2. LOGICA DI FILTRAGGIO E VISUALIZZAZIONE
+        # 2. LOGICA DI FILTRAGGIO E VISUALIZZAZIONE MODELLI
         st.subheader("Risultato Selezione")
         cols_res = st.columns(len(model_names))
 
         for idx, model in enumerate(model_names):
             is_compatible = True
             
-            # Un modello è compatibile solo se possiede TUTTI i valori selezionati
+            # Controllo compatibilità: il modello deve corrispondere a TUTTI i filtri attivi
             for f_name, f_value in active_filters.items():
-                model_value = str(df[df['Feature'] == f_name][model].values[0])
+                model_value = str(df[df['Feature'] == f_name][model].values[0]).strip()
                 if model_value != f_value:
                     is_compatible = False
                     break
             
             with cols_res[idx]:
+                label_html = f"<div style='text-align: center; padding: 10px; border-radius: 8px; min-height: 70px; display: flex; align-items: center; justify-content: center; border: 1px solid "
+                
                 if not active_filters:
-                    # Stato neutro (nessun filtro)
-                    st.markdown(f"<div style='color: #666; text-align: center; border: 1px solid #333; padding: 10px; border-radius: 8px; font-size: 0.8em; min-height: 60px; display: flex; align-items: center; justify-content: center;'>{model}</div>", unsafe_allow_html=True)
+                    # Stato iniziale: Grigio neutro
+                    st.markdown(label_html + "#333; color: #777;'>"+model+"</div>", unsafe_allow_html=True)
                 elif is_compatible:
-                    # Modello che soddisfa i requisiti
-                    st.markdown(f"<div style='color: white; background-color: #007bff; text-align: center; border: 2px solid #00d4ff; padding: 10px; border-radius: 8px; font-weight: bold; box-shadow: 0px 0px 15px rgba(0,123,255,0.6); min-height: 60px; display: flex; align-items: center; justify-content: center;'>{model}</div>", unsafe_allow_html=True)
+                    # Modello compatibile: Blu acceso con ombra
+                    st.markdown(label_html + "#00d4ff; background-color: #007bff; color: white; font-weight: bold; box-shadow: 0px 0px 15px rgba(0,123,255,0.6);'>"+model+"</div>", unsafe_allow_html=True)
                 else:
-                    # Modello escluso
-                    st.markdown(f"<div style='color: #222; text-align: center; border: 1px solid #111; padding: 10px; border-radius: 8px; opacity: 0.2; min-height: 60px; display: flex; align-items: center; justify-content: center;'>{model}</div>", unsafe_allow_html=True)
+                    # Modello escluso: Sbiadito
+                    st.markdown(label_html + "#111; color: #222; opacity: 0.15;'>"+model+"</div>", unsafe_allow_html=True)
 
     with tab2:
         st.header("Le migliori schede per tipo di progetto")
@@ -107,10 +120,10 @@ if df is not None:
         st.markdown("### 🎥 Approfondimento Video")
         st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
 
-# CSS per pulire lo stile delle "pills" e degli expander
+# CSS per migliorare la leggibilità
 st.markdown("""
     <style>
-    .stExpander { border: none !important; box-shadow: none !important; }
-    [data-testid="stMarkdownContainer"] p { font-size: 0.9rem; font-weight: 600; margin-bottom: 0px; }
+    .stExpander { border-bottom: 1px solid #222 !important; }
+    [data-testid="stMarkdownContainer"] p { font-size: 0.85rem; color: #aaa; margin-bottom: 2px; }
     </style>
     """, unsafe_allow_html=True)
