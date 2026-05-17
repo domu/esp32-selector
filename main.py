@@ -25,7 +25,7 @@ def select_board_features(model_name, df):
             st.session_state[f"pill_{feat_label}"] = val_to_set
 
 def load_data():
-    # NOME FILE CORRETTO (Quello caricato su GitHub)
+    # Nome del file presente nel repository
     nome_file = "ESP32_Feature_Matrix_2026.csv"
     try:
         df = pd.read_csv(nome_file)
@@ -34,7 +34,7 @@ def load_data():
         df['Feature'] = df['Feature'].str.strip()
         return df
     except Exception as e:
-        st.error(f"File '{nome_file}' non trovato o errore: {e}")
+        st.error(f"Errore: il file '{nome_file}' non è stato trovato. Assicurati che il nome sia corretto su GitHub.")
         return None
 
 df = load_data()
@@ -48,15 +48,16 @@ if df is not None:
         <style>
         /* Colonna sinistra scorrevole */
         [data-testid="stColumn"]:nth-child(1) {{
-            width: 62% !important;
-            max-width: 62% !important;
+            width: 65% !important;
+            max-width: 65% !important;
+            padding-right: 30px;
         }}
         /* Colonna destra fissa */
         [data-testid="stColumn"]:nth-child(2) {{
             position: fixed;
             right: 2%;
             top: 60px;
-            width: 30% !important;
+            width: 28% !important;
             max-height: 85vh;
             overflow-y: auto;
             background-color: #0e1117;
@@ -91,9 +92,9 @@ if df is not None:
 
     with col_filters:
         st.title("🛠️ ESP32 Smart Selector")
-        # Container con chiave dinamica per reset totale visivo
+        
         with st.container(key=f"filters_main_{st.session_state.reset_key}"):
-            tab1, tab2 = st.tabs(["🎯 Filtri Dinamici", "📚 Info & Video"])
+            tab1, tab2 = st.tabs(["🎯 Filtri Dinamici", "📚 Consigli & Risorse"])
             
             with tab1:
                 for section in main_sections:
@@ -107,16 +108,36 @@ if df is not None:
                                     res = st.pills(feat_label, possible_values, key=f"pill_{feat_label}")
                                     if res:
                                         active_filters[feat_label] = res
+            
             with tab2:
+                st.subheader("💡 Consigli per Categoria d'Uso")
+                rec_categories = {
+                    "Sperimentazione / General Purpose": ["ESP32-S3", "ESP32-C6", "ESP32-C5"],
+                    "Multimedia / Display / AI": ["ESP32-P4", "ESP32-S3", "LilyGo T-Display"],
+                    "Smart Home (Matter/Zigbee)": ["ESP32-C6", "ESP32-H2", "ESP32-C5"],
+                    "Budget / Educational": ["ESP32-C3", "ESP32 Original", "XIAO C3"]
+                }
+
+                sel_cat = st.radio("Seleziona la tua area di interesse:", list(rec_categories.keys()), horizontal=True)
+                
+                c1, c2, c3 = st.columns(3)
+                picks = rec_categories[sel_cat]
+                
+                with c1: st.info(f"🥇 **Top Choice**\n\n{picks[0]}")
+                with c2: st.info(f"🥈 **Alternative**\n\n{picks[1]}")
+                with c3: st.info(f"🥉 **Entry Level**\n\n{picks[2]}")
+
+                st.divider()
+                st.subheader("🎥 Video Approfondimento")
                 st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
 
-    # --- COLONNA DESTRA RISULTATI ---
+    # --- COLONNA DESTRA RISULTATI (FISSA) ---
     with col_results:
         st.button("🔄 Reset Totale", use_container_width=True, type="primary", on_click=reset_all_filters)
         st.subheader("Modelli ESP32")
+        st.caption("Clicca su un modello per caricarne i filtri")
         
         for model in model_names:
-            # Calcolo compatibilità
             is_compatible = True
             for f_name, f_val in active_filters.items():
                 model_val = str(df[df['Feature'] == f_name][model].values[0]).strip()
@@ -128,7 +149,6 @@ if df is not None:
             opacity = "1.0" if (is_active or not active_filters) else "0.15"
             border_color = "#00d4ff" if is_active else "#333"
             
-            # Card grafica
             st.markdown(f"""
                 <div class="board-card" style="opacity: {opacity}; border-color: {border_color};">
                     <span style="font-size: 0.85rem; font-weight: bold; color: white;">{model}</span>
@@ -136,7 +156,6 @@ if df is not None:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Pulsante selezione board
-            if st.button(f"Vedi specifiche: {model}", key=f"btn_{model}", use_container_width=True):
+            if st.button(f"Carica caratteristiche: {model}", key=f"btn_{model}", use_container_width=True):
                 select_board_features(model, df)
                 st.rerun()
