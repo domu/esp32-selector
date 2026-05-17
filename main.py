@@ -8,13 +8,14 @@ def load_data():
     nome_file = "ESP32_Feature_Matrix_2026.csv"
     try:
         df = pd.read_csv(nome_file)
-        # Pulizia nomi colonne e gestione valori nulli
+        # Pulizia nomi colonne: rimuoviamo i ritorni a capo e gli spazi superflui
         df.columns = [c.replace('\n', ' ').strip() for c in df.columns]
-        # Riordiniamo le categorie per sicurezza (rimuovendo eventuali spazi)
-        df['Feature Category'] = df['Feature Category'].str.strip()
+        # Puliamo anche i dati nelle colonne descrittive
+        df['Feature Category'] = df['Feature Category'].ffill().str.strip()
+        df['Feature'] = df['Feature'].str.strip()
         return df
-    except:
-        st.error("File CSV non trovato nel repository!")
+    except Exception as e:
+        st.error(f"Errore nel caricamento del file: {e}")
         return None
 
 df = load_data()
@@ -22,7 +23,7 @@ df = load_data()
 if df is not None:
     model_names = df.columns[2:]
     
-    # Definiamo le categorie principali nell'ordine esatto richiesto
+    # Lista ordinata delle categorie principali come da tua richiesta
     main_sections = [
         "ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", 
         "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", 
@@ -41,31 +42,33 @@ if df is not None:
 
         active_filters = {}
 
-        # 1. GENERAZIONE DINAMICA DEI FILTRI PER SEZIONE
+        # 1. GENERAZIONE DEI FILTRI PER OGNI RIGA DI OGNI SEZIONE
         for section in main_sections:
-            # Filtriamo solo le righe che appartengono a questa categoria specifica
+            # Prendiamo TUTTE le righe che appartengono a questa sezione
             cat_rows = df[df['Feature Category'] == section]
             
             if not cat_rows.empty:
                 with st.expander(f"📂 {section}", expanded=True):
+                    # Iteriamo su ogni riga (Feature) della sezione
                     for _, row in cat_rows.iterrows():
-                        feature_name = row['Feature']
+                        feature_label = row['Feature']
                         
-                        # Estraiamo i valori unici dai modelli escludendo rigorosamente "✗" e valori nulli
+                        # Estraiamo i valori unici dai modelli per questa specifica riga
+                        # Escludiamo '✗', valori nulli o celle vuote
                         possible_values = []
                         for model in model_names:
                             val = str(row[model]).strip()
-                            if val != '✗' and val != 'nan' and val != '':
+                            if val not in ['✗', 'nan', '', 'None']:
                                 if val not in possible_values:
                                     possible_values.append(val)
                         
-                        # Mostriamo il selettore solo se ci sono valori validi (non solo ✗)
+                        # Se la riga ha dei valori selezionabili, creiamo il filtro
                         if possible_values:
-                            # Ordiniamo i valori per una visualizzazione pulita
+                            # Ordiniamo i valori (es. frequenze o nomi architetture)
                             possible_values.sort()
-                            selected = st.pills(feature_name, possible_values, key=f"pill_{feature_name}")
+                            selected = st.pills(feature_label, possible_values, key=f"pill_{feature_label}")
                             if selected:
-                                active_filters[feature_name] = selected
+                                active_filters[feature_label] = selected
 
         st.divider()
 
@@ -76,7 +79,7 @@ if df is not None:
         for idx, model in enumerate(model_names):
             is_compatible = True
             
-            # Controllo compatibilità: il modello deve corrispondere a TUTTI i filtri attivi
+            # Un modello resta "acceso" solo se soddisfa TUTTI i filtri attivi
             for f_name, f_value in active_filters.items():
                 model_value = str(df[df['Feature'] == f_name][model].values[0]).strip()
                 if model_value != f_value:
@@ -84,17 +87,18 @@ if df is not None:
                     break
             
             with cols_res[idx]:
-                label_html = f"<div style='text-align: center; padding: 10px; border-radius: 8px; min-height: 70px; display: flex; align-items: center; justify-content: center; border: 1px solid "
+                # Stile grafico dei box modelli
+                base_style = "text-align: center; padding: 10px; border-radius: 8px; min-height: 70px; display: flex; align-items: center; justify-content: center; border: 1px solid "
                 
                 if not active_filters:
-                    # Stato iniziale: Grigio neutro
-                    st.markdown(label_html + "#333; color: #777;'>"+model+"</div>", unsafe_allow_html=True)
+                    # Default: Grigio
+                    st.markdown(f"<div style='{base_style} #333; color: #777;'>{model}</div>", unsafe_allow_html=True)
                 elif is_compatible:
-                    # Modello compatibile: Blu acceso con ombra
-                    st.markdown(label_html + "#00d4ff; background-color: #007bff; color: white; font-weight: bold; box-shadow: 0px 0px 15px rgba(0,123,255,0.6);'>"+model+"</div>", unsafe_allow_html=True)
+                    # Compatibile: Blu brillante
+                    st.markdown(f"<div style='{base_style} #00d4ff; background-color: #007bff; color: white; font-weight: bold; box-shadow: 0px 0px 15px rgba(0,123,255,0.6);'>{model}</div>", unsafe_allow_html=True)
                 else:
-                    # Modello escluso: Sbiadito
-                    st.markdown(label_html + "#111; color: #222; opacity: 0.15;'>"+model+"</div>", unsafe_allow_html=True)
+                    # Non compatibile: Opaco
+                    st.markdown(f"<div style='{base_style} #111; color: #222; opacity: 0.15;'>{model}</div>", unsafe_allow_html=True)
 
     with tab2:
         st.header("Le migliori schede per tipo di progetto")
@@ -120,10 +124,10 @@ if df is not None:
         st.markdown("### 🎥 Approfondimento Video")
         st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
 
-# CSS per migliorare la leggibilità
+# CSS Custom
 st.markdown("""
     <style>
-    .stExpander { border-bottom: 1px solid #222 !important; }
-    [data-testid="stMarkdownContainer"] p { font-size: 0.85rem; color: #aaa; margin-bottom: 2px; }
+    .stExpander { border: none !important; border-bottom: 1px solid #222 !important; }
+    [data-testid="stMarkdownContainer"] p { font-size: 0.85rem; font-weight: 600; color: #d1d1d1; margin-bottom: 2px; }
     </style>
     """, unsafe_allow_html=True)
