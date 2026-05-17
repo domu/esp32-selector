@@ -2,10 +2,22 @@ import streamlit as st
 import pandas as pd
 
 # Caricamento dati dal file Excel (convertito in CSV per comodità nel codice)
-def load_data():
+#def load_data():
     # Carica il foglio della matrice (ESP32-Feature-Matrix-2026.csv)
-    df = pd.read_csv('ESP32-Feature-Matrix-2026.xlsx - ESP32 Feature Matrix.csv')
-    return df
+#    df = pd.read_csv('ESP32-Feature-Matrix-2026.xlsx - ESP32 Feature Matrix.csv')
+#    return df
+
+#Versione per Strealit
+
+def load_data():
+    # Il nome del file deve essere identico a quello che hai caricato su GitHub
+    nome_file = "ESP32-Feature-Matrix-2026.xlsx - ESP32 Feature Matrix.csv"
+    try:
+        df = pd.read_csv(nome_file)
+        return df
+    except FileNotFoundError:
+        st.error(f"Attenzione: Il file '{nome_file}' non è stato trovato nel repository!")
+        return None
 
 df = load_data()
 
