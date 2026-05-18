@@ -5,7 +5,7 @@ from datetime import datetime
 # Configurazione Pagina
 st.set_page_config(page_title="ESP32 Expert Selector 2026", layout="wide")
 
-# --- TIMESTAMP DI GENERAZIONE ---
+# --- TIMESTAMP ---
 GEN_TIMESTAMP = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 # --- INIZIALIZZAZIONE STATO ---
@@ -13,33 +13,36 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = "Selezione"
 if 'reset_trigger' not in st.session_state:
     st.session_state.reset_trigger = 0
-if 'selected_recommendation' not in st.session_state:
-    st.session_state.selected_recommendation = None
+if 'active_board' not in st.session_state:
+    st.session_state.active_board = None
 
 # --- FUNZIONI DI LOGICA ---
 def perform_reset():
-    # Pulisce tutti i filtri e resetta l'ID dei widget
-    for key in list(st.session_state.keys()):
-        if key.startswith("pill_") or key == 'selected_recommendation':
-            del st.session_state[key]
-    st.session_state.reset_trigger += 1
-    st.session_state.current_page = "Selezione"
-
-def select_board_features(model_name, df):
-    # Pulisce i filtri attuali prima di applicare quelli della board selezionata
+    # Pulizia totale di ogni filtro e dello stato della board attiva
     for key in list(st.session_state.keys()):
         if key.startswith("pill_"):
             del st.session_state[key]
-    
-    # Carica le caratteristiche del modello selezionato nello stato delle pills
-    for _, row in df.iterrows():
-        f_label = str(row['Feature']).strip()
-        val = str(row[model_name]).strip()
-        if val not in ['✗', 'nan', '', 'None']:
-            st.session_state[f"pill_{f_label}"] = val
-    
+    st.session_state.active_board = None
+    st.session_state.reset_trigger += 1 # Forza la rigenerazione dei widget
     st.session_state.current_page = "Selezione"
-    st.session_state.reset_trigger += 1
+
+def toggle_board_features(model_name, df):
+    # Se la board è già quella attiva, resettiamo tutto (Deselezione)
+    if st.session_state.active_board == model_name:
+        perform_reset()
+    else:
+        # Altrimenti carichiamo i parametri della nuova board
+        st.session_state.active_board = model_name
+        for key in list(st.session_state.keys()):
+            if key.startswith("pill_"):
+                del st.session_state[key]
+        
+        for _, row in df.iterrows():
+            f_label = str(row['Feature']).strip()
+            val = str(row[model_name]).strip()
+            if val not in ['✗', 'nan', '', 'None']:
+                st.session_state[f"pill_{f_label}"] = val
+        st.session_state.reset_trigger += 1
 
 def load_data():
     nome_file = "ESP32_Feature_Matrix_2026.csv"
@@ -59,30 +62,24 @@ if df is not None:
     model_names = df.columns[2:]
     
     # --- CSS PERSONALIZZATO ---
-    st.markdown("""
+    st.markdown(f"""
         <style>
-        .stButton button { width: 100%; border-radius: 8px; }
-        .board-card {
+        .stButton button {{ border-radius: 8px; }}
+        .board-line {{
             display: flex; justify-content: space-between; align-items: center;
-            padding: 4px 10px; border: 1px solid #444; border-radius: 6px;
-            background: #161b22; margin-bottom: 2px;
-        }
-        .tag-ok {
-            background: #007bff; color: white; font-size: 0.6rem;
-            padding: 1px 5px; border-radius: 3px; font-weight: bold;
-        }
-        .feature-table {
-            width: 100%; border-collapse: collapse; margin-top: 20px; color: #e0e0e0;
-        }
-        .feature-table th, .feature-table td {
-            border: 1px solid #3e444d; padding: 10px; text-align: left;
-        }
-        .feature-table th { background-color: #007bff; color: white; }
-        .footer {
-            position: fixed; left: 0; bottom: 0; width: 100%;
-            background: #0e1117; color: #666; text-align: center;
-            padding: 8px; font-size: 0.7rem; border-top: 1px solid #333; z-index: 100;
-        }
+            padding: 2px 8px; border: 1px solid #333; border-radius: 5px;
+            background: #161b22; margin-bottom: 4px;
+        }}
+        .board-name {{ font-size: 0.85rem; font-weight: bold; flex-grow: 1; }}
+        .status-ok {{ color: #007bff; font-weight: bold; font-size: 0.75rem; margin-right: 10px; }}
+        /* Rimpiccioliamo il font del pulsante inline */
+        div[data-testid="column"] button {{
+            font-size: 0.7rem !important; padding: 2px 5px !important; height: auto !important;
+        }}
+        .feature-table {{ width: 100%; border-collapse: collapse; color: #e0e0e0; }}
+        .feature-table th, .feature-table td {{ border: 1px solid #3e444d; padding: 8px; text-align: left; font-size: 0.85rem; }}
+        .feature-table th {{ background-color: #007bff; color: white; }}
+        .footer {{ position: fixed; left: 0; bottom: 0; width: 100%; background: #0e1117; color: #666; text-align: center; padding: 8px; font-size: 0.7rem; border-top: 1px solid #333; z-index: 100; }}
         </style>
     """, unsafe_allow_html=True)
 
@@ -91,25 +88,22 @@ if df is not None:
     n1, n2, n3 = st.columns(3)
     with n1:
         if st.button("🎯 Selezione Caratteristiche", type="primary" if st.session_state.current_page == "Selezione" else "secondary"):
-            st.session_state.current_page = "Selezione"
-            st.rerun()
+            st.session_state.current_page = "Selezione"; st.rerun()
     with n2:
         if st.button("📚 Consigli d'Utilizzo", type="primary" if st.session_state.current_page == "Consigli" else "secondary"):
-            st.session_state.current_page = "Consigli"
-            st.rerun()
+            st.session_state.current_page = "Consigli"; st.rerun()
     with n3:
         if st.button("🔗 Link & Risorse", type="primary" if st.session_state.current_page == "Links" else "secondary"):
-            st.session_state.current_page = "Links"
-            st.rerun()
+            st.session_state.current_page = "Links"; st.rerun()
 
-    # --- LOGICA PAGINE ---
-    
+    # --- PAGINA SELEZIONE ---
     if st.session_state.current_page == "Selezione":
-        col_left, col_right = st.columns([0.72, 0.28])
+        col_left, col_right = st.columns([0.7, 0.3])
         active_filters = {}
         
         with col_left:
-            with st.container(key=f"grid_{st.session_state.reset_trigger}"):
+            # Il reset_trigger cambia la key e forza la ricostruzione pulita dei widget
+            with st.container(key=f"ui_grid_{st.session_state.reset_trigger}"):
                 sections = ["ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", "SECURITY"]
                 for sec in sections:
                     rows = df[df['Feature Category'] == sec]
@@ -125,7 +119,7 @@ if df is not None:
                                         if sel: active_filters[f_label] = sel
 
         with col_right:
-            if st.button("🔄 RESET FILTRI", type="primary"):
+            if st.button("🔄 RESET FILTRI", type="primary", use_container_width=True):
                 perform_reset()
                 st.rerun()
             
@@ -136,18 +130,26 @@ if df is not None:
                     if str(df[df['Feature'] == f][m].values[0]).strip() != v:
                         match = False; break
                 
-                is_active = match and active_filters
-                opac = "1.0" if (is_active or not active_filters) else "0.15"
-                st.markdown(f"""
-                    <div class="board-card" style="opacity: {opac}; border-color: {'#00d4ff' if is_active else '#333'};">
-                        <span style="font-size: 0.8rem; font-weight: bold;">{m}</span>
-                        {"<span class='tag-ok'>✓ OK</span>" if is_active else ""}
-                    </div>
-                """, unsafe_allow_html=True)
-                if st.button(f"Carica {m}", key=f"load_{m}"):
-                    select_board_features(m, df)
-                    st.rerun()
+                is_compatible = match and active_filters
+                is_active = (st.session_state.active_board == m)
+                opac = "1.0" if (is_compatible or not active_filters or is_active) else "0.2"
+                
+                # Container della riga
+                st.markdown(f'<div class="board-line" style="opacity: {opac}; border-color: {"#007bff" if is_active else "#333"};">', unsafe_allow_html=True)
+                c_name, c_status, c_btn = st.columns([0.5, 0.25, 0.25])
+                with c_name:
+                    st.markdown(f'<span class="board-name">{m}</span>', unsafe_allow_html=True)
+                with c_status:
+                    if is_compatible:
+                        st.markdown('<span class="status-ok">✓ OK</span>', unsafe_allow_html=True)
+                with c_btn:
+                    label = "Cancella" if is_active else "Carica"
+                    if st.button(label, key=f"btn_{m}"):
+                        toggle_board_features(m, df)
+                        st.rerun()
+                st.markdown('</div>', unsafe_allow_html=True)
 
+    # --- PAGINA CONSIGLI ---
     elif st.session_state.current_page == "Consigli":
         st.subheader("💡 Top Picks per Categoria")
         recs = {
@@ -156,35 +158,28 @@ if df is not None:
             "IoT / Matter": ["ESP32-C6", "ESP32-H2", "ESP32-C5 (NEW)"],
             "Budget": ["ESP32-C3", "ESP32-C2", "ESP32-S2"]
         }
-        cat = st.radio("Ambito d'uso:", list(recs.keys()), horizontal=True)
+        cat = st.radio("Ambito:", list(recs.keys()), horizontal=True)
         c1, c2, c3 = st.columns(3)
         p = recs[cat]
         
-        with c1:
-            if st.button(f"🥇 ORO: {p[0]}", type="primary" if st.session_state.selected_recommendation == p[0] else "secondary", key="gold"):
-                st.session_state.selected_recommendation = p[0]
-        with c2:
-            if st.button(f"🥈 ARGENTO: {p[1]}", type="primary" if st.session_state.selected_recommendation == p[1] else "secondary", key="silver"):
-                st.session_state.selected_recommendation = p[1]
-        with c3:
-            if st.button(f"🥉 BRONZO: {p[2]}", type="primary" if st.session_state.selected_recommendation == p[2] else "secondary", key="bronze"):
-                st.session_state.selected_recommendation = p[2]
+        for i, board in enumerate(p):
+            with [c1, c2, c3][i]:
+                prefix = ["🥇 ORO", "🥈 ARGENTO", "🥉 BRONZO"][i]
+                if st.button(f"{prefix}: {board}", type="primary" if st.session_state.selected_recommendation == board else "secondary"):
+                    st.session_state.selected_recommendation = board
 
         if st.session_state.selected_recommendation:
             model = st.session_state.selected_recommendation
-            st.markdown(f"### 🔍 Specifiche Tecniche: {model}")
+            st.markdown(f"#### 🔍 Specifiche: {model}")
+            b_data = df[['Feature Category', 'Feature', model]]
+            b_data = b_data[~b_data[model].isin(['✗', 'nan', 'None', ''])]
             
-            board_data = df[['Feature Category', 'Feature', model]]
-            board_data = board_data[~board_data[model].isin(['✗', 'nan', 'None', ''])]
-            
-            # Generazione Tabella HTML
-            html_table = "<table class='feature-table'><thead><tr><th>Categoria</th><th>Caratteristica</th><th>Valore</th></tr></thead><tbody>"
-            for _, row in board_data.iterrows():
-                html_table += f"<tr><td>{row['Feature Category']}</td><td>{row['Feature']}</td><td>{row[model]}</td></tr>"
-            html_table += "</tbody></table>"
-            
-            st.markdown(html_table, unsafe_allow_html=True)
+            html = "<table class='feature-table'><tr><th>Categoria</th><th>Feature</th><th>Dettaglio</th></tr>"
+            for _, row in b_data.iterrows():
+                html += f"<tr><td>{row['Feature Category']}</td><td>{row['Feature']}</td><td>{row[model]}</td></tr>"
+            st.markdown(html + "</table>", unsafe_allow_html=True)
 
+    # --- PAGINA LINKS ---
     elif st.session_state.current_page == "Links":
         st.subheader("🔗 Risorse e Video")
         l1, l2 = st.columns(2)
