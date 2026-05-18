@@ -6,12 +6,17 @@
         {
           "title": "ESP32-S3 DevKit",
           "text": "Scheda versatile per progetti general purpose e AI edge.",
-          "url": "https://amzn.to/3W9XXXX"
+          "url": "https://amzn.eu/d/0j1GGGS9"
         },
         {
-          "title": "ESP32-C6 Wi-Fi 6",
+          "title": "ESP-32 C6 DevKit",
           "text": "Ottima scelta per IoT moderno con Wi-Fi 6 e Thread.",
-          "url": "https://amzn.to/3W8YYYY"
+          "url": "https://amzn.eu/d/0jl4bXX0"
+        }
+        {
+          "title": "ESP32-DevKitC V4",
+          "text": "ESP32-WROOM-32U.",
+          "url": "https://amzn.eu/d/06sdXdvK"
         }
       ]
     },
@@ -22,6 +27,11 @@
           "title": "Espressif SOCs Comparison",
           "text": "Comparatore ufficiale SoC Espressif.",
           "url": "https://www.espressif.com/en/products/socs"
+        },
+         {
+          "title": "Arduino Nano ESP32 User Manual",
+          "text": "Arduino Nano ESP32.",
+          "url": "https://docs.arduino.cc/tutorials/nano-esp32/cheat-sheet/"
         },
         {
           "title": "Video approfondimento ESP32",
