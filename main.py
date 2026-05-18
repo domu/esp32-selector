@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import json
+from urllib.parse import urlparse, parse_qs
 from datetime import datetime
 
 # Configurazione Pagina
@@ -38,7 +40,36 @@ def load_data():
         st.error(f"Errore caricamento CSV: {e}")
         return None
 
+def load_links_data():
+    nome_file = "links_resources.json"
+    try:
+        with open(nome_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data
+    except Exception as e:
+        st.error(f"Errore caricamento JSON link/risorse: {e}")
+        return {"sections": []}
+
+def get_youtube_video_id(url):
+    try:
+        parsed = urlparse(url)
+        host = (parsed.netloc or "").lower()
+        if "youtu.be" in host:
+            return parsed.path.strip("/").split("/")[0]
+        if "youtube.com" in host:
+            if parsed.path == "/watch":
+                return parse_qs(parsed.query).get("v", [None])[0]
+            if parsed.path.startswith("/shorts/") or parsed.path.startswith("/embed/"):
+                return parsed.path.split("/")[2] if len(parsed.path.split("/")) > 2 else None
+    except Exception:
+        return None
+    return None
+
+def is_youtube_url(url):
+    return get_youtube_video_id(url) is not None
+
 df = load_data()
+links_data = load_links_data()
 
 if df is not None:
     model_names = df.columns[2:]
@@ -182,18 +213,31 @@ if df is not None:
     # --- PAGINA 3: LINKS ---
     elif st.session_state.current_page == "Links":
         st.subheader("🔗 Risorse e Link Utili")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.write("### 🛒 Link Amazon (Affiliazione)")
-            st.write("- [ESP32-S3 DevKit](https://amzn.to/3W9XXXX)")
-            st.write("- [ESP32-C6 Wi-Fi 6](https://amzn.to/3W8YYYY)")
-        with col2:
-            st.write("### 📄 Documentazione")
-            st.write("- [Espressif SOCs Comparison](https://www.espressif.com/en/products/socs)")
-        
-        st.divider()
-        st.subheader("🎥 Video Approfondimento")
-        st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
+        sections = links_data.get("sections", [])
+        if not sections:
+            st.info("Nessuna risorsa configurata. Popola il file links_resources.json.")
+        else:
+            for section in sections:
+                section_title = section.get("title", "Risorse")
+                st.write(f"### {section_title}")
+                items = section.get("items", [])
+                for item in items:
+                    item_title = item.get("title", "Link")
+                    item_text = item.get("text", "")
+                    item_url = item.get("url", "")
+                    if item_url:
+                        st.markdown(f"- **[{item_title}]({item_url})**")
+                    else:
+                        st.markdown(f"- **{item_title}**")
+                    if item_text:
+                        st.caption(item_text)
+
+                    if item_url and is_youtube_url(item_url):
+                        video_id = get_youtube_video_id(item_url)
+                        if video_id:
+                            thumb_url = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+                            st.image(thumb_url, width=240, caption="Anteprima video YouTube")
+                st.divider()
 
     # --- FOOTER ---
     st.markdown(f"""

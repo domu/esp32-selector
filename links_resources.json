@@ -1,0 +1,34 @@
+{
+  "sections": [
+    {
+      "title": "🛒 Link Amazon (Affiliazione)",
+      "items": [
+        {
+          "title": "ESP32-S3 DevKit",
+          "text": "Scheda versatile per progetti general purpose e AI edge.",
+          "url": "https://amzn.to/3W9XXXX"
+        },
+        {
+          "title": "ESP32-C6 Wi-Fi 6",
+          "text": "Ottima scelta per IoT moderno con Wi-Fi 6 e Thread.",
+          "url": "https://amzn.to/3W8YYYY"
+        }
+      ]
+    },
+    {
+      "title": "📄 Documentazione",
+      "items": [
+        {
+          "title": "Espressif SOCs Comparison",
+          "text": "Comparatore ufficiale SoC Espressif.",
+          "url": "https://www.espressif.com/en/products/socs"
+        },
+        {
+          "title": "Video approfondimento ESP32",
+          "text": "Panoramica tecnica e consigli pratici.",
+          "url": "https://www.youtube.com/watch?v=CfIjInYch7U"
+        }
+      ]
+    }
+  ]
+}
