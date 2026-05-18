@@ -16,10 +16,10 @@ if 'reset_counter' not in st.session_state:
 
 # --- FUNZIONE RESET ---
 def perform_reset():
-    # Svuota tutti i widget selezionati
-    for key in list(st.session_state.keys()):
-        if key.startswith("pill_"):
-            del st.session_state[key]
+    # Svuota tutti i widget selezionati (anche eventuali chiavi namespaced)
+    keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("pill_") or "pill_" in k]
+    for key in keys_to_clear:
+        del st.session_state[key]
     # Incrementa il contatore per forzare la rigenerazione dei widget
     st.session_state.reset_counter += 1
     st.rerun()
