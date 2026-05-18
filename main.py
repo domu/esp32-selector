@@ -5,9 +5,8 @@ from datetime import datetime
 # Configurazione Pagina
 st.set_page_config(page_title="ESP32 Expert Selector 2026", layout="wide")
 
-# --- TIMESTAMP ---
-# Aggiornato al momento del fix
-GEN_TIMESTAMP = "18/05/2026 11:30:00"
+# --- TIMESTAMP DI GENERAZIONE ---
+GEN_TIMESTAMP = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
 # --- INIZIALIZZAZIONE STATO ---
 if 'current_page' not in st.session_state:
@@ -19,17 +18,33 @@ if 'selected_recommendation' not in st.session_state:
 
 # --- FUNZIONI DI LOGICA ---
 def perform_reset():
+    # Pulisce tutti i filtri e resetta l'ID dei widget
     for key in list(st.session_state.keys()):
         if key.startswith("pill_") or key == 'selected_recommendation':
             del st.session_state[key]
     st.session_state.reset_trigger += 1
     st.session_state.current_page = "Selezione"
 
+def select_board_features(model_name, df):
+    # Pulisce i filtri attuali prima di applicare quelli della board selezionata
+    for key in list(st.session_state.keys()):
+        if key.startswith("pill_"):
+            del st.session_state[key]
+    
+    # Carica le caratteristiche del modello selezionato nello stato delle pills
+    for _, row in df.iterrows():
+        f_label = str(row['Feature']).strip()
+        val = str(row[model_name]).strip()
+        if val not in ['✗', 'nan', '', 'None']:
+            st.session_state[f"pill_{f_label}"] = val
+    
+    st.session_state.current_page = "Selezione"
+    st.session_state.reset_trigger += 1
+
 def load_data():
     nome_file = "ESP32_Feature_Matrix_2026.csv"
     try:
         df = pd.read_csv(nome_file)
-        # Pulizia intestazioni: trasforma i ritorni a capo in spazi e toglie spazi extra
         df.columns = [c.replace('\n', ' ').strip() for c in df.columns]
         df['Feature Category'] = df['Feature Category'].ffill().str.strip()
         df['Feature'] = df['Feature'].str.strip()
@@ -41,10 +56,9 @@ def load_data():
 df = load_data()
 
 if df is not None:
-    # Lista dinamica dei modelli basata sulle colonne del CSV
     model_names = df.columns[2:]
     
-    # --- CSS ---
+    # --- CSS PERSONALIZZATO ---
     st.markdown("""
         <style>
         .stButton button { width: 100%; border-radius: 8px; }
@@ -57,10 +71,13 @@ if df is not None:
             background: #007bff; color: white; font-size: 0.6rem;
             padding: 1px 5px; border-radius: 3px; font-weight: bold;
         }
-        .feature-box {
-            background-color: #1e232b; padding: 20px; border-radius: 10px;
-            border: 2px solid #007bff; margin-top: 20px;
+        .feature-table {
+            width: 100%; border-collapse: collapse; margin-top: 20px; color: #e0e0e0;
         }
+        .feature-table th, .feature-table td {
+            border: 1px solid #3e444d; padding: 10px; text-align: left;
+        }
+        .feature-table th { background-color: #007bff; color: white; }
         .footer {
             position: fixed; left: 0; bottom: 0; width: 100%;
             background: #0e1117; color: #666; text-align: center;
@@ -69,7 +86,7 @@ if df is not None:
         </style>
     """, unsafe_allow_html=True)
 
-    # --- NAVIGAZIONE A PULSANTI ---
+    # --- NAVBAR ---
     st.title("🛠️ ESP32 Smart Selector")
     n1, n2, n3 = st.columns(3)
     with n1:
@@ -87,13 +104,12 @@ if df is not None:
 
     # --- LOGICA PAGINE ---
     
-    # 1. PAGINA SELEZIONE
     if st.session_state.current_page == "Selezione":
         col_left, col_right = st.columns([0.72, 0.28])
         active_filters = {}
         
         with col_left:
-            with st.container(key=f"main_grid_{st.session_state.reset_trigger}"):
+            with st.container(key=f"grid_{st.session_state.reset_trigger}"):
                 sections = ["ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", "SECURITY"]
                 for sec in sections:
                     rows = df[df['Feature Category'] == sec]
@@ -113,7 +129,7 @@ if df is not None:
                 perform_reset()
                 st.rerun()
             
-            st.write("### 📱 Board Status")
+            st.write("### 📱 ESP32 Boards")
             for m in model_names:
                 match = True
                 for f, v in active_filters.items():
@@ -128,11 +144,12 @@ if df is not None:
                         {"<span class='tag-ok'>✓ OK</span>" if is_active else ""}
                     </div>
                 """, unsafe_allow_html=True)
+                if st.button(f"Carica {m}", key=f"load_{m}"):
+                    select_board_features(m, df)
+                    st.rerun()
 
-    # 2. PAGINA CONSIGLI
     elif st.session_state.current_page == "Consigli":
         st.subheader("💡 Top Picks per Categoria")
-        # Nomi mappati esattamente sulle colonne del CSV pulito
         recs = {
             "General / DIY": ["ESP32-S3", "ESP32-C6", "ESP32-C5 (NEW)"],
             "AI / Multimedia": ["ESP32-P4 (NEW)", "ESP32-S3", "ESP32 (Original)"],
@@ -153,44 +170,38 @@ if df is not None:
             if st.button(f"🥉 BRONZO: {p[2]}", type="primary" if st.session_state.selected_recommendation == p[2] else "secondary", key="bronze"):
                 st.session_state.selected_recommendation = p[2]
 
-        # Visualizzazione caratteristiche sotto i pulsanti
         if st.session_state.selected_recommendation:
-            model_sel = st.session_state.selected_recommendation
-            if model_sel in df.columns:
-                st.markdown(f"<div class='feature-box'><h3>🔍 Caratteristiche Tecniche: {model_sel}</h3>", unsafe_allow_html=True)
-                # Filtriamo solo le feature presenti (no ✗ o nan)
-                board_data = df[['Feature Category', 'Feature', model_sel]]
-                board_data = board_data[~board_data[model_sel].isin(['✗', 'nan', 'None', ''])]
-                
-                for cat_name in board_data['Feature Category'].unique():
-                    st.write(f"**{cat_name}**")
-                    items = board_data[board_data['Feature Category'] == cat_name]
-                    text_items = [f"{row['Feature']}: {row[model_sel]}" for _, row in items.iterrows()]
-                    st.write(", ".join(text_items))
-                st.markdown("</div>", unsafe_allow_html=True)
-            else:
-                st.error(f"Errore: Il modello '{model_sel}' non è stato trovato nel database. Controlla la corrispondenza dei nomi.")
+            model = st.session_state.selected_recommendation
+            st.markdown(f"### 🔍 Specifiche Tecniche: {model}")
+            
+            board_data = df[['Feature Category', 'Feature', model]]
+            board_data = board_data[~board_data[model].isin(['✗', 'nan', 'None', ''])]
+            
+            # Generazione Tabella HTML
+            html_table = "<table class='feature-table'><thead><tr><th>Categoria</th><th>Caratteristica</th><th>Valore</th></tr></thead><tbody>"
+            for _, row in board_data.iterrows():
+                html_table += f"<tr><td>{row['Feature Category']}</td><td>{row['Feature']}</td><td>{row[model]}</td></tr>"
+            html_table += "</tbody></table>"
+            
+            st.markdown(html_table, unsafe_allow_html=True)
 
-    # 3. PAGINA LINKS
     elif st.session_state.current_page == "Links":
-        st.subheader("🔗 Risorse Utili e Acquisti")
+        st.subheader("🔗 Risorse e Video")
         l1, l2 = st.columns(2)
         with l1:
-            st.markdown("### 📄 Datasheets Ufficiali")
-            st.write("- [Espressif Series Comparison](https://www.espressif.com/en/products/socs)")
-            st.write("- [ESP32-S3 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf)")
+            st.markdown("### 🛒 Amazon Affiliate Links")
+            st.write("- [ESP32-S3 DevKit](https://amzn.to/3W9XXXX)")
+            st.write("- [ESP32-C6 Wi-Fi 6](https://amzn.to/3W8YYYY)")
         with l2:
-            st.markdown("### 🛒 Acquisto Board (Affiliazione)")
-            st.write("- [ESP32-S3 DevKit su Amazon](https://amzn.to/3W9XXXX)")
-            st.write("- [ESP32-C6 Wi-Fi 6 su Amazon](https://amzn.to/3W8YYYY)")
+            st.markdown("### 📄 Documentazione")
+            st.write("- [Espressif SOC Comparison](https://www.espressif.com/en/products/socs)")
         
         st.divider()
-        st.subheader("🎥 Approfondimento Video")
         st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
 
     # --- FOOTER ---
     st.markdown(f"""
         <div class="footer">
-            © 2026 Davide Pedretti Biagioni | CC: <a href="https://www.youtube.com/@Dronebotworkshop" style="color: #007bff; text-decoration: none;">Dronebot Workshop</a> | {GEN_TIMESTAMP}
+            © 2026 Davide Pedretti Biagioni | CC: <a href="https://www.youtube.com/@Dronebotworkshop" style="color: #007bff; text-decoration: none;">Dronebot Workshop</a> | Creato: {GEN_TIMESTAMP}
         </div>
     """, unsafe_allow_html=True)
