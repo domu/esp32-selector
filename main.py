@@ -140,6 +140,42 @@ if df is not None:
             with c_recs[i]:
                 label = ["🥇 ORO", "🥈 ARGENTO", "🥉 BRONZO"][i]
                 st.info(f"**{label}**\n\n{board}")
+
+                # Mostra le caratteristiche tecniche del modello consigliato dal CSV
+                board_col = board
+                if board not in model_names:
+                    # Mappa fallback tra etichetta "friendly" e colonna reale del CSV
+                    board_map = {
+                        "ESP32 (Original)": "ESP32 (Original)",
+                        "ESP32-C5 (NEW)": "ESP32-C5 (NEW)",
+                        "ESP32-P4 (NEW)": "ESP32-P4 (NEW)"
+                    }
+                    board_col = board_map.get(board, board)
+
+                if board_col in model_names:
+                    with st.expander(f"📋 Specifiche {board}", expanded=False):
+                        spec_rows = []
+                        for _, row in df.iterrows():
+                            feature_name = str(row["Feature"]).strip()
+                            feature_category = str(row["Feature Category"]).strip()
+                            feature_value = str(row[board_col]).strip()
+                            if feature_value not in ["", "nan", "None", "✗", "—"]:
+                                spec_rows.append({
+                                    "Categoria": feature_category,
+                                    "Caratteristica": feature_name,
+                                    "Valore": feature_value
+                                })
+
+                        if spec_rows:
+                            st.dataframe(
+                                pd.DataFrame(spec_rows),
+                                use_container_width=True,
+                                hide_index=True
+                            )
+                        else:
+                            st.caption("Nessuna specifica disponibile per questo modello.")
+                else:
+                    st.caption("Specifiche non trovate nel file CSV per questo modello.")
                 
         st.info("Nota: La funzione di caricamento automatico delle specifiche è temporaneamente disabilitata per manutenzione.")
 
