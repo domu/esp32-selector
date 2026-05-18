@@ -6,7 +6,8 @@ from datetime import datetime
 st.set_page_config(page_title="ESP32 Expert Selector 2026", layout="wide")
 
 # --- TIMESTAMP ---
-GEN_TIMESTAMP = "18/05/2026 10:30:00"
+# Aggiornato al momento del fix
+GEN_TIMESTAMP = "18/05/2026 11:30:00"
 
 # --- INIZIALIZZAZIONE STATO ---
 if 'current_page' not in st.session_state:
@@ -28,17 +29,19 @@ def load_data():
     nome_file = "ESP32_Feature_Matrix_2026.csv"
     try:
         df = pd.read_csv(nome_file)
+        # Pulizia intestazioni: trasforma i ritorni a capo in spazi e toglie spazi extra
         df.columns = [c.replace('\n', ' ').strip() for c in df.columns]
         df['Feature Category'] = df['Feature Category'].ffill().str.strip()
         df['Feature'] = df['Feature'].str.strip()
         return df
-    except:
-        st.error("File CSV non trovato. Controlla il nome del file nel repository.")
+    except Exception as e:
+        st.error(f"Errore caricamento dati: {e}")
         return None
 
 df = load_data()
 
 if df is not None:
+    # Lista dinamica dei modelli basata sulle colonne del CSV
     model_names = df.columns[2:]
     
     # --- CSS ---
@@ -55,8 +58,8 @@ if df is not None:
             padding: 1px 5px; border-radius: 3px; font-weight: bold;
         }
         .feature-box {
-            background-color: #1e232b; padding: 15px; border-radius: 10px;
-            border: 1px solid #3e444d; margin-top: 20px;
+            background-color: #1e232b; padding: 20px; border-radius: 10px;
+            border: 2px solid #007bff; margin-top: 20px;
         }
         .footer {
             position: fixed; left: 0; bottom: 0; width: 100%;
@@ -129,18 +132,20 @@ if df is not None:
     # 2. PAGINA CONSIGLI
     elif st.session_state.current_page == "Consigli":
         st.subheader("💡 Top Picks per Categoria")
+        # Nomi mappati esattamente sulle colonne del CSV pulito
         recs = {
-            "General / DIY": ["ESP32-S3", "ESP32-C6", "ESP32-C5"],
-            "AI / Multimedia": ["ESP32-P4", "ESP32-S3", "ESP32 (Original)"],
-            "IoT / Matter": ["ESP32-C6", "ESP32-H2", "ESP32-C5"],
+            "General / DIY": ["ESP32-S3", "ESP32-C6", "ESP32-C5 (NEW)"],
+            "AI / Multimedia": ["ESP32-P4 (NEW)", "ESP32-S3", "ESP32 (Original)"],
+            "IoT / Matter": ["ESP32-C6", "ESP32-H2", "ESP32-C5 (NEW)"],
             "Budget": ["ESP32-C3", "ESP32-C2", "ESP32-S2"]
         }
         cat = st.radio("Ambito d'uso:", list(recs.keys()), horizontal=True)
         c1, c2, c3 = st.columns(3)
         p = recs[cat]
         
-        if st.button(f"🥇 ORO: {p[0]}", type="primary" if st.session_state.selected_recommendation == p[0] else "secondary", key="gold"):
-            st.session_state.selected_recommendation = p[0]
+        with c1:
+            if st.button(f"🥇 ORO: {p[0]}", type="primary" if st.session_state.selected_recommendation == p[0] else "secondary", key="gold"):
+                st.session_state.selected_recommendation = p[0]
         with c2:
             if st.button(f"🥈 ARGENTO: {p[1]}", type="primary" if st.session_state.selected_recommendation == p[1] else "secondary", key="silver"):
                 st.session_state.selected_recommendation = p[1]
@@ -150,17 +155,21 @@ if df is not None:
 
         # Visualizzazione caratteristiche sotto i pulsanti
         if st.session_state.selected_recommendation:
-            st.markdown(f"<div class='feature-box'><h3>🔍 Caratteristiche Tecniche: {st.session_state.selected_recommendation}</h3>", unsafe_allow_html=True)
-            board_data = df[['Feature Category', 'Feature', st.session_state.selected_recommendation]]
-            # Filtriamo solo le feature presenti (no ✗ o nan)
-            board_data = board_data[~board_data[st.session_state.selected_recommendation].isin(['✗', 'nan', 'None', ''])]
-            
-            for cat_name in board_data['Feature Category'].unique():
-                st.write(f"**{cat_name}**")
-                items = board_data[board_data['Feature Category'] == cat_name]
-                text_items = [f"{row['Feature']}: {row[st.session_state.selected_recommendation]}" for _, row in items.iterrows()]
-                st.write(", ".join(text_items))
-            st.markdown("</div>", unsafe_allow_html=True)
+            model_sel = st.session_state.selected_recommendation
+            if model_sel in df.columns:
+                st.markdown(f"<div class='feature-box'><h3>🔍 Caratteristiche Tecniche: {model_sel}</h3>", unsafe_allow_html=True)
+                # Filtriamo solo le feature presenti (no ✗ o nan)
+                board_data = df[['Feature Category', 'Feature', model_sel]]
+                board_data = board_data[~board_data[model_sel].isin(['✗', 'nan', 'None', ''])]
+                
+                for cat_name in board_data['Feature Category'].unique():
+                    st.write(f"**{cat_name}**")
+                    items = board_data[board_data['Feature Category'] == cat_name]
+                    text_items = [f"{row['Feature']}: {row[model_sel]}" for _, row in items.iterrows()]
+                    st.write(", ".join(text_items))
+                st.markdown("</div>", unsafe_allow_html=True)
+            else:
+                st.error(f"Errore: Il modello '{model_sel}' non è stato trovato nel database. Controlla la corrispondenza dei nomi.")
 
     # 3. PAGINA LINKS
     elif st.session_state.current_page == "Links":
