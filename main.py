@@ -98,7 +98,8 @@ if df is not None:
                                 opts = sorted(list(set([str(r[m]).strip() for m in model_names if str(r[m]).strip() not in ['✗', 'nan', '']])))
                                 if opts:
                                     with sub_cols[i % 3]:
-                                        sel = st.pills(f_label, opts, key=f"pill_{f_label}")
+                                        pill_key = f"pill_{st.session_state.reset_counter}_{f_label}"
+                                        sel = st.pills(f_label, opts, key=pill_key)
                                         if sel: active_filters[f_label] = sel
 
         with col_r:
