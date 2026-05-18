@@ -208,7 +208,7 @@ if df is not None:
                 else:
                     st.caption("Specifiche non trovate nel file CSV per questo modello.")
                 
-        st.info("Nota: La funzione di caricamento automatico delle specifiche è temporaneamente disabilitata per manutenzione.")
+   #     st.info("Nota: La funzione di caricamento automatico delle specifiche è temporaneamente disabilitata per manutenzione.")
 
     # --- PAGINA 3: LINKS ---
     elif st.session_state.current_page == "Links":
@@ -242,6 +242,6 @@ if df is not None:
     # --- FOOTER ---
     st.markdown(f"""
         <div class="footer">
-            © 2026 Davide Pedretti Biagioni | CC: <a href="https://www.youtube.com/@Dronebotworkshop" style="color: #007bff; text-decoration: none;">Dronebot Workshop</a> | Aggiornato: {GEN_TIMESTAMP}
+            <a href="https://linktr.ee/davide.pedrettibiagioni" style="color: #007bff; text-decoration: none;">© 2026 Davide Pedretti Biagioni</a> | CC: <a href="https://www.youtube.com/@Dronebotworkshop" style="color: #007bff; text-decoration: none;">Dronebot Workshop</a> | Aggiornato: {GEN_TIMESTAMP}
         </div>
     """, unsafe_allow_html=True)
