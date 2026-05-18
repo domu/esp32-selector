@@ -5,41 +5,35 @@ from datetime import datetime
 # Configurazione Pagina
 st.set_page_config(page_title="ESP32 Expert Selector 2026", layout="wide")
 
-# --- DATI E TIMESTAMP ---
-GEN_TIMESTAMP = "18/05/2026 00:30:00"
+# --- TIMESTAMP ---
+GEN_TIMESTAMP = "18/05/2026 09:15:00"
 
-# Inizializzazione Stato
-if 'reset_id' not in st.session_state:
-    st.session_state.reset_id = 0
-if 'current_tab' not in st.session_state:
-    st.session_state.current_tab = "🎯 Selezione"
+# --- LOGICA DI NAVIGAZIONE E RESET ---
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "Selezione"
+if 'reset_trigger' not in st.session_state:
+    st.session_state.reset_trigger = 0
 
-# --- LOGICA CORE ---
-def hard_reset():
-    # Pulisce tutto lo stato e rigenera l'ID dei widget
-    for key in list(st.session_state.keys()):
-        if key != 'reset_id':
-            del st.session_state[key]
-    st.session_state.reset_id += 1
-    st.session_state.current_tab = "🎯 Selezione"
-    st.rerun()
-
-def select_and_jump(model_name, df):
-    # 1. Pulizia selettiva delle pillole
+# Funzione Reset (Senza rerun interno per evitare l'errore no-op)
+def perform_reset():
     for key in list(st.session_state.keys()):
         if key.startswith("pill_"):
             del st.session_state[key]
-    
-    # 2. Caricamento caratteristiche
+    st.session_state.reset_trigger += 1
+    st.session_state.current_page = "Selezione"
+
+def select_and_jump(model_name, df):
+    # Pulisce e imposta le nuove pillole
+    for key in list(st.session_state.keys()):
+        if key.startswith("pill_"):
+            del st.session_state[key]
     for _, row in df.iterrows():
-        feat_label = str(row['Feature']).strip()
+        f_label = str(row['Feature']).strip()
         val = str(row[model_name]).strip()
         if val not in ['✗', 'nan', '', 'None']:
-            st.session_state[f"pill_{feat_label}"] = val
-    
-    # 3. Cambio Tab e Refresh
-    st.session_state.current_tab = "🎯 Selezione"
-    st.rerun()
+            st.session_state[f"pill_{f_label}"] = val
+    st.session_state.current_page = "Selezione"
+    st.session_state.reset_trigger += 1
 
 def load_data():
     nome_file = "ESP32_Feature_Matrix_2026.csv"
@@ -57,17 +51,15 @@ df = load_data()
 
 if df is not None:
     model_names = df.columns[2:]
-    sections = ["ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", "SECURITY", "STATUS"]
-
+    
     # --- CSS ---
     st.markdown("""
         <style>
-        [data-testid="stColumn"]:nth-child(2) {
-            position: sticky; top: 10px; height: fit-content;
-        }
+        .stButton button { width: 100%; border-radius: 8px; }
+        .nav-active { background-color: #007bff !important; color: white !important; }
         .board-card {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 4px 10px; border: 1px solid #444; border-radius: 4px;
+            padding: 4px 10px; border: 1px solid #444; border-radius: 6px;
             background: #161b22; margin-bottom: 2px;
         }
         .tag-ok {
@@ -82,19 +74,32 @@ if df is not None:
         </style>
     """, unsafe_allow_html=True)
 
-    # --- NAVIGAZIONE CUSTOM (Necessaria per il salto tra tab) ---
+    # --- BARRA DI NAVIGAZIONE A PULSANTI ---
     st.title("🛠️ ESP32 Smart Selector")
-    st.session_state.current_tab = st.radio("Menu Navigazione:", ["🎯 Selezione", "📚 Consigli"], horizontal=True, label_visibility="collapsed")
+    n1, n2, n3 = st.columns(3)
+    with n1:
+        if st.button("🎯 Selezione Caratteristiche", type="primary" if st.session_state.current_page == "Selezione" else "secondary"):
+            st.session_state.current_page = "Selezione"
+            st.rerun()
+    with n2:
+        if st.button("📚 Consigli d'Utilizzo", type="primary" if st.session_state.current_page == "Consigli" else "secondary"):
+            st.session_state.current_page = "Consigli"
+            st.rerun()
+    with n3:
+        if st.button("🔗 Link & Risorse", type="primary" if st.session_state.current_page == "Links" else "secondary"):
+            st.session_state.current_page = "Links"
+            st.rerun()
 
     active_filters = {}
 
-    # --- TAB SELEZIONE ---
-    if st.session_state.current_tab == "🎯 Selezione":
+    # --- LOGICA PAGINE ---
+    if st.session_state.current_page == "Selezione":
         col_left, col_right = st.columns([0.72, 0.28])
         
         with col_left:
-            # CONTAINER DINAMICO PER RESET VISIVO
-            with st.container(key=f"form_v{st.session_state.reset_id}"):
+            # Container con ID dinamico per il reset totale
+            with st.container(key=f"main_grid_{st.session_state.reset_trigger}"):
+                sections = ["ARCHITECTURE", "WIRELESS", "COMMON PERIPHERALS", "ANALOG", "USB & HIGH-SPEED", "DISPLAY & CAMERA", "SECURITY"]
                 for sec in sections:
                     rows = df[df['Feature Category'] == sec]
                     if not rows.empty:
@@ -109,7 +114,10 @@ if df is not None:
                                         if sel: active_filters[f_label] = sel
 
         with col_right:
-            st.button("🔄 RESET TOTALE", use_container_width=True, type="primary", on_click=hard_reset)
+            if st.button("🔄 RESET FILTRI", type="primary"):
+                perform_reset()
+                st.rerun()
+            
             st.write("### 📱 Board Status")
             for m in model_names:
                 match = True
@@ -119,44 +127,57 @@ if df is not None:
                 
                 is_active = match and active_filters
                 opac = "1.0" if (is_active or not active_filters) else "0.15"
-                
                 st.markdown(f"""
                     <div class="board-card" style="opacity: {opac}; border-color: {'#00d4ff' if is_active else '#333'};">
                         <span style="font-size: 0.8rem; font-weight: bold;">{m}</span>
                         {"<span class='tag-ok'>✓ OK</span>" if is_active else ""}
                     </div>
                 """, unsafe_allow_html=True)
-                
-                if st.button(f"Carica {m}", key=f"side_{m}", use_container_width=True):
+                if st.button(f"Vedi {m}", key=f"side_{m}"):
                     select_and_jump(m, df)
 
-    # --- TAB CONSIGLI ---
-    else:
-        st.subheader("💡 Consigli Rapidi (Clicca per analizzare)")
+    elif st.session_state.current_page == "Consigli":
+        st.subheader("💡 Top Picks per Categoria")
         recs = {
             "General / DIY": ["ESP32-S3", "ESP32-C6", "ESP32-C5"],
             "AI / Multimedia": ["ESP32-P4", "ESP32-S3", "ESP32 (Original)"],
             "IoT / Matter": ["ESP32-C6", "ESP32-H2", "ESP32-C5"],
             "Budget": ["ESP32-C3", "ESP32-C2", "ESP32-S2"]
         }
-        
         cat = st.radio("Ambito:", list(recs.keys()), horizontal=True)
         c1, c2, c3 = st.columns(3)
         p = recs[cat]
         
-        with c1:
-            if st.button(f"🥇 ORO\n\n{p[0]}", use_container_width=True, type="primary"): select_and_jump(p[0], df)
-        with c2:
-            if st.button(f"🥈 ARGENTO\n\n{p[1]}", use_container_width=True): select_and_jump(p[1], df)
-        with c3:
-            if st.button(f"🥉 BRONZO\n\n{p[2]}", use_container_width=True): select_and_jump(p[2], df)
+        with c1: 
+            if st.button(f"🥇 ORO\n\n{p[0]}", type="primary"): select_and_jump(p[0], df)
+        with c2: 
+            if st.button(f"🥈 ARGENTO\n\n{p[1]}"): select_and_jump(p[1], df)
+        with c3: 
+            if st.button(f"🥉 BRONZO\n\n{p[2]}"): select_and_jump(p[2], df)
         
         st.divider()
         st.video("https://www.youtube.com/watch?v=CfIjInYch7U")
 
+    elif st.session_state.current_page == "Links":
+        st.subheader("🔗 Risorse Utili e Acquisti")
+        st.info("Utilizzando i link Amazon sottostanti sosterrai lo sviluppo di questo tool senza costi aggiuntivi.")
+        
+        l1, l2 = st.columns(2)
+        with l1:
+            st.markdown("### 📄 Datasheets Ufficiali")
+            st.write("- [Espressif Series Comparison](https://www.espressif.com/en/products/socs)")
+            st.write("- [ESP32-S3 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf)")
+            st.write("- [ESP32-C6 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-c6_datasheet_en.pdf)")
+        
+        with l2:
+            st.markdown("### 🛒 Acquisto Board (Affiliazione)")
+            st.write("- [ESP32-S3 DevKit su Amazon](https://amzn.to/3W9XXXX) (Codice: DPB2026)")
+            st.write("- [ESP32-C6 Wi-Fi 6 su Amazon](https://amzn.to/3W8YYYY)")
+            st.write("- [LilyGo T-Display S3](https://amzn.to/3W7ZZZZ)")
+
     # --- FOOTER ---
     st.markdown(f"""
         <div class="footer">
-            © 2026 Davide Pedretti Biagioni | CC: <a href="https://www.youtube.com/@Dronebotworkshop" style="color: #007bff; text-decoration: none;">Dronebot Workshop</a> | Generato: {GEN_TIMESTAMP}
+            © 2026 Davide Pedretti Biagioni | CC: <a href="https://www.youtube.com/@Dronebotworkshop" style="color: #007bff; text-decoration: none;">Dronebot Workshop</a> | Aggiornato: {GEN_TIMESTAMP}
         </div>
     """, unsafe_allow_html=True)
